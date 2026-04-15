@@ -55,6 +55,15 @@ async function main() {
     ],
   });
 
+  // Types de vente
+  await prisma.typeVente.createMany({
+    data: [
+      { code: "location", label: "Location", ordre: 1 },
+      { code: "vente", label: "Vente", ordre: 2 },
+      { code: "pret", label: "Prêt", ordre: 3 },
+    ],
+  });
+
   // Consommables
   const typeConso1 = await prisma.typeConsommable.create({ data: { nom: "Papier" } });
   const typeConso2 = await prisma.typeConsommable.create({ data: { nom: "Encre" } });

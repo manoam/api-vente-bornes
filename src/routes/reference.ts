@@ -68,6 +68,18 @@ referenceRouter.get("/pays", async (_req, res) => {
   }
 });
 
+referenceRouter.get("/types-ventes", async (_req, res) => {
+  try {
+    const types = await prisma.typeVente.findMany({
+      where: { actif: true },
+      orderBy: { ordre: "asc" },
+    });
+    res.json(types);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 referenceRouter.get("/bornes", async (_req, res) => {
   try {
     const bornes = await prisma.borne.findMany({

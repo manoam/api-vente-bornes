@@ -192,6 +192,20 @@ model Pays {
   @@map("pays")
 }
 
+// ─── Types de vente ─────────────────────────────────────────
+
+model TypeVente {
+  id    Int     @id @default(autoincrement())
+  code  String  @unique
+  label String
+  ordre Int     @default(0)
+  actif Boolean @default(true)
+
+  ventes Vente[]
+
+  @@map("types_ventes")
+}
+
 // ─── Ventes (table principale) ──────────────────────────────
 
 model Vente {
@@ -199,8 +213,9 @@ model Vente {
   numero String @unique @default("")
 
   // Type & classification
-  typeVente String @map("type_vente")
-  parcId    Int?   @map("parc_id")
+  typeVenteId Int? @map("type_vente_id")
+  typeVente   String @map("type_vente")
+  parcId      Int?   @map("parc_id")
   parcDureeId Int? @map("parc_duree_id")
 
   // Utilisateur
@@ -321,6 +336,7 @@ model Vente {
   parc           Parc?       @relation(fields: [parcId], references: [id])
   parcDuree      ParcDuree?  @relation(fields: [parcDureeId], references: [id])
   livraisonPays  Pays?       @relation(fields: [livraisonPaysId], references: [id])
+  typeVenteRef   TypeVente?  @relation(fields: [typeVenteId], references: [id])
 
   accessoires    VenteAccessoire[]
   consommables   VenteConsommable[]
