@@ -83,14 +83,16 @@ model GroupeClient {
 
 // ─── Équipements ────────────────────────────────────────────
 
-model GammeBorne {
-  id  Int    @id @default(autoincrement())
-  nom String
+model GammeRef {
+  id        Int      @id @default(autoincrement())
+  crmId     Int      @unique @map("crm_id")
+  nom       String
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   models ModelBorne[]
   ventes Vente[]
 
-  @@map("gammes_bornes")
+  @@map("gammes_ref")
 }
 
 model ModelBorne {
@@ -99,7 +101,7 @@ model ModelBorne {
   gammeId      Int    @map("gamme_id")
   thumbnailUrl String? @map("thumbnail_url")
 
-  gamme  GammeBorne @relation(fields: [gammeId], references: [id])
+  gamme  GammeRef @relation(fields: [gammeId], references: [id])
   ventes Vente[]
 
   @@map("model_bornes")
@@ -329,7 +331,7 @@ model Vente {
   user           User        @relation("VenteUser", fields: [userId], references: [id])
   modifiedUser   User?       @relation("VenteModifiedUser", fields: [modifiedUserId], references: [id])
   client         Client?     @relation(fields: [clientId], references: [id])
-  gammeBorne     GammeBorne? @relation(fields: [gammeBorneId], references: [id])
+  gammeBorne     GammeRef?   @relation(fields: [gammeBorneId], references: [id])
   modelBorne     ModelBorne? @relation(fields: [modelBorneId], references: [id])
   couleur        Couleur?    @relation(fields: [couleurBorneId], references: [id])
   borne          Borne?      @relation(fields: [borneId], references: [id])

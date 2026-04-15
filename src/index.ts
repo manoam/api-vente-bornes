@@ -7,6 +7,7 @@ import { usersRouter } from "./routes/users.js";
 import { referenceRouter } from "./routes/reference.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { parametresRouter } from "./routes/parametres.js";
+import { startRabbitMQConsumer } from "./rabbitmq/consumer.js";
 
 dotenv.config();
 
@@ -36,4 +37,7 @@ app.get("/api/health", (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  startRabbitMQConsumer().catch((err: unknown) =>
+    console.error("Failed to start RabbitMQ consumer:", err)
+  );
 });

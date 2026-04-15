@@ -7,7 +7,7 @@ export const referenceRouter = Router();
 
 referenceRouter.get("/gammes-bornes", async (_req, res) => {
   try {
-    const gammes = await prisma.gammeBorne.findMany({
+    const gammes = await prisma.gammeRef.findMany({
       include: { models: true },
       orderBy: { nom: "asc" },
     });

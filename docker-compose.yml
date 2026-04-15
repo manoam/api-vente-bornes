@@ -24,6 +24,8 @@ services:
       PORT: 3002
       NODE_ENV: production
       CORS_ORIGIN: ${CORS_ORIGIN}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE}
     depends_on:
       postgres:
         condition: service_healthy

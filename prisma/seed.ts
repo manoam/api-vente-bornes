@@ -21,9 +21,13 @@ async function main() {
     ],
   });
 
-  // Gammes & Modèles
-  const gamme1 = await prisma.gammeBorne.create({ data: { nom: "Borne Photo" } });
-  const gamme2 = await prisma.gammeBorne.create({ data: { nom: "Borne Vidéo" } });
+  // Gammes (réplique CRM via RabbitMQ - seed pour démo locale uniquement)
+  const gamme1 = await prisma.gammeRef.create({
+    data: { crmId: 1, nom: "Borne Photo" },
+  });
+  const gamme2 = await prisma.gammeRef.create({
+    data: { crmId: 2, nom: "Borne Vidéo" },
+  });
   await prisma.modelBorne.createMany({
     data: [
       { nom: "Classic", gammeId: gamme1.id },
