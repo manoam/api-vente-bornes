@@ -28,13 +28,13 @@ async function main() {
   const gamme2 = await prisma.gammeRef.create({
     data: { crmId: 2, nom: "Borne Vidéo" },
   });
-  await prisma.modelBorne.createMany({
+  await prisma.modelRef.createMany({
     data: [
-      { nom: "Classic", gammeId: gamme1.id },
-      { nom: "Premium", gammeId: gamme1.id },
-      { nom: "Mini", gammeId: gamme1.id },
-      { nom: "Studio", gammeId: gamme2.id },
-      { nom: "360", gammeId: gamme2.id },
+      { crmId: 101, nom: "Classic", gammeRefId: gamme1.id },
+      { crmId: 102, nom: "Premium", gammeRefId: gamme1.id },
+      { crmId: 103, nom: "Mini", gammeRefId: gamme1.id },
+      { crmId: 104, nom: "Studio", gammeRefId: gamme2.id },
+      { crmId: 105, nom: "360", gammeRefId: gamme2.id },
     ],
   });
 

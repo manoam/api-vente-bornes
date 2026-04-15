@@ -28,9 +28,9 @@ interface CrmMessage {
   meta?: Record<string, any>;
 }
 
-const QUEUE_NAME = "ventes-bornes.gamme-ref-sync";
+const QUEUE_NAME = "ventes-bornes.ref-sync";
 const EXCHANGE = process.env.RABBITMQ_EXCHANGE ?? "konitysevents";
-const ROUTING_PATTERNS = ["crm.gamme_borne.*"];
+const ROUTING_PATTERNS = ["crm.gamme_borne.*", "crm.model_borne.*"];
 
 let connection: ChannelModel | null = null;
 let channel: Channel | null = null;
@@ -105,6 +105,10 @@ async function handleMessage(msg: CrmMessage): Promise<void> {
     return handleGammeBorne(msg);
   }
 
+  if (msg.entity_type === "model_borne") {
+    return handleModelBorne(msg);
+  }
+
   console.log(`[RabbitMQ] Unhandled entity type: ${msg.entity_type}`);
 }
 
@@ -142,6 +146,62 @@ async function handleGammeBorne(msg: CrmMessage): Promise<void> {
 
     default:
       console.warn(`[RabbitMQ] Unknown event for gamme_borne: ${event}`);
+  }
+}
+
+async function handleModelBorne(msg: CrmMessage): Promise<void> {
+  const { event, payload } = msg;
+  const crmId = Number(payload.id);
+  const nom = String(payload.nom ?? "");
+  const crmGammeId = payload.gamme_borne_id ? Number(payload.gamme_borne_id) : null;
+
+  if (!crmId) {
+    console.warn("[RabbitMQ] model_borne message missing id");
+    return;
+  }
+
+  // Résout la FK locale vers gamme_ref à partir du crmId de la gamme
+  let gammeRefId: number | null = null;
+  if (crmGammeId) {
+    const gamme = await prisma.gammeRef.findUnique({
+      where: { crmId: crmGammeId },
+      select: { id: true },
+    });
+    if (!gamme) {
+      console.warn(
+        `[RabbitMQ] model_borne crmId=${crmId}: gamme crmId=${crmGammeId} not synced yet, will create without link`
+      );
+    } else {
+      gammeRefId = gamme.id;
+    }
+  }
+
+  switch (event) {
+    case "created":
+    case "updated":
+      await prisma.modelRef.upsert({
+        where: { crmId },
+        create: { crmId, nom, gammeRefId },
+        update: { nom, gammeRefId },
+      });
+      console.log(
+        `[RabbitMQ] model_ref upserted: crmId=${crmId} nom=${nom} gammeRefId=${gammeRefId}`
+      );
+      break;
+
+    case "deleted":
+      await prisma.modelRef.delete({ where: { crmId } }).catch((err) => {
+        if (err.code === "P2025") {
+          console.log(`[RabbitMQ] model_ref crmId=${crmId} already deleted`);
+        } else {
+          throw err;
+        }
+      });
+      console.log(`[RabbitMQ] model_ref deleted: crmId=${crmId}`);
+      break;
+
+    default:
+      console.warn(`[RabbitMQ] Unknown event for model_borne: ${event}`);
   }
 }
 

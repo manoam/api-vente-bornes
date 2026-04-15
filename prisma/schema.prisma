@@ -89,22 +89,23 @@ model GammeRef {
   nom       String
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  models ModelBorne[]
+  models ModelRef[]
   ventes Vente[]
 
   @@map("gammes_ref")
 }
 
-model ModelBorne {
-  id           Int    @id @default(autoincrement())
-  nom          String
-  gammeId      Int    @map("gamme_id")
-  thumbnailUrl String? @map("thumbnail_url")
+model ModelRef {
+  id         Int      @id @default(autoincrement())
+  crmId      Int      @unique @map("crm_id")
+  nom        String
+  gammeRefId Int?     @map("gamme_ref_id")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  gamme  GammeRef @relation(fields: [gammeId], references: [id])
+  gamme  GammeRef? @relation(fields: [gammeRefId], references: [id])
   ventes Vente[]
 
-  @@map("model_bornes")
+  @@map("models_ref")
 }
 
 model Couleur {
@@ -332,7 +333,7 @@ model Vente {
   modifiedUser   User?       @relation("VenteModifiedUser", fields: [modifiedUserId], references: [id])
   client         Client?     @relation(fields: [clientId], references: [id])
   gammeBorne     GammeRef?   @relation(fields: [gammeBorneId], references: [id])
-  modelBorne     ModelBorne? @relation(fields: [modelBorneId], references: [id])
+  modelBorne     ModelRef?   @relation(fields: [modelBorneId], references: [id])
   couleur        Couleur?    @relation(fields: [couleurBorneId], references: [id])
   borne          Borne?      @relation(fields: [borneId], references: [id])
   parc           Parc?       @relation(fields: [parcId], references: [id])
