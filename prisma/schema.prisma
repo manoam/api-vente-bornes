@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Utilisateurs ───────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  nom       String
+  prenom    String
+  role      UserRole @default(COMMERCIAL)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ventes         Vente[]  @relation("VenteUser")
+  ventesModified Vente[]  @relation("VenteModifiedUser")
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  COMMERCIAL
+  LOGISTIQUE
+  FINANCE
+  COMPTA
+  PROJET
+}
+
+// ─── Clients ────────────────────────────────────────────────
+
+model Client {
+  id         Int      @id @default(autoincrement())
+  nom        String
+  prenom     String?
+  email      String?
+  telephone  String?
+  adresse    String?
+  ville      String?
+  codePostal String?  @map("code_postal")
+  pays       String?  @default("France")
+  isAgence   Boolean  @default(false) @map("is_agence")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  contacts ClientContact[]
+  ventes   Vente[]
+  groupe   GroupeClient?   @relation(fields: [groupeClientId], references: [id])
+  groupeClientId Int?      @map("groupe_client_id")
+
+  @@map("clients")
+}
+
+model ClientContact {
+  id        Int     @id @default(autoincrement())
+  clientId  Int     @map("client_id")
+  nom       String
+  prenom    String?
+  email     String?
+  telephone String?
+  fonction  String?
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_contacts")
+}
+
+model GroupeClient {
+  id   Int    @id @default(autoincrement())
+  nom  String
+
+  clients Client[]
+
+  @@map("groupe_clients")
+}
+
+// ─── Équipements ────────────────────────────────────────────
+
+model GammeBorne {
+  id  Int    @id @default(autoincrement())
+  nom String
+
+  models ModelBorne[]
+  ventes Vente[]
+
+  @@map("gammes_bornes")
+}
+
+model ModelBorne {
+  id           Int    @id @default(autoincrement())
+  nom          String
+  gammeId      Int    @map("gamme_id")
+  thumbnailUrl String? @map("thumbnail_url")
+
+  gamme  GammeBorne @relation(fields: [gammeId], references: [id])
+  ventes Vente[]
+
+  @@map("model_bornes")
+}
+
+model Couleur {
+  id  Int    @id @default(autoincrement())
+  nom String
+  hex String?
+
+  ventes Vente[]
+
+  @@map("couleurs")
+}
+
+model Borne {
+  id        Int      @id @default(autoincrement())
+  numero    String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ventes Vente[]
+
+  @@map("bornes")
+}
+
+model Accessoire {
+  id  Int    @id @default(autoincrement())
+  nom String
+
+  ventesAccessoires VenteAccessoire[]
+
+  @@map("accessoires")
+}
+
+model TypeConsommable {
+  id  Int    @id @default(autoincrement())
+  nom String
+
+  sousTypes       SousTypeConsommable[]
+  ventesConsommables VenteConsommable[]
+
+  @@map("types_consommables")
+}
+
+model SousTypeConsommable {
+  id               Int    @id @default(autoincrement())
+  nom              String
+  typeConsommableId Int   @map("type_consommable_id")
+
+  typeConsommable TypeConsommable @relation(fields: [typeConsommableId], references: [id])
+  ventesConsommables VenteConsommable[]
+
+  @@map("sous_types_consommables")
+}
+
+// ─── Parcs & Durées ─────────────────────────────────────────
+
+model Parc {
+  id  Int    @id @default(autoincrement())
+  nom String
+
+  durees ParcDuree[]
+  ventes Vente[]
+
+  @@map("parcs")
+}
+
+model ParcDuree {
+  id     Int    @id @default(autoincrement())
+  parcId Int    @map("parc_id")
+  label  String
+  mois   Int
+
+  parc   Parc @relation(fields: [parcId], references: [id])
+  ventes Vente[]
+
+  @@map("parc_durees")
+}
+
+// ─── Pays ───────────────────────────────────────────────────
+
+model Pays {
+  id  Int    @id @default(autoincrement())
+  nom String
+  code String @unique
+
+  ventes Vente[]
+
+  @@map("pays")
+}
+
+// ─── Ventes (table principale) ──────────────────────────────
+
+model Vente {
+  id     Int    @id @default(autoincrement())
+  numero String @unique @default("")
+
+  // Type & classification
+  typeVente String @map("type_vente")
+  parcId    Int?   @map("parc_id")
+  parcDureeId Int? @map("parc_duree_id")
+
+  // Utilisateur
+  userId         Int @map("user_id")
+  modifiedUserId Int? @map("modified_user_id")
+
+  // Client
+  clientId              Int?    @map("client_id")
+  clientNameNotSellsy   String? @map("client_name_not_sellsy")
+  clientNom             String? @map("client_nom")
+  clientPrenom          String? @map("client_prenom")
+  clientEmail           String? @map("client_email")
+  clientTelephone       String? @map("client_telephone")
+  clientAdresse         String? @map("client_adresse")
+  clientVille           String? @map("client_ville")
+  clientCp              String? @map("client_cp")
+  clientPays            String? @map("client_pays")
+  groupeClientId        Int?    @map("groupe_client_id")
+  isClientNotInSellsy   Boolean @default(false) @map("is_client_not_in_sellsy")
+  isClientBelongsToGroup Boolean @default(false) @map("is_client_belongs_to_group")
+  isAgence              Boolean @default(false) @map("is_agence")
+  proprietaire          String?
+  contactClientId       Int?    @map("contact_client_id")
+
+  // Équipement borne
+  gammeBorneId    Int? @map("gamme_borne_id")
+  modelBorneId    Int? @map("model_borne_id")
+  couleurBorneId  Int? @map("couleur_borne_id")
+  borneId         Int? @map("borne_id")
+  typeEquipementId Int? @map("type_equipement_id")
+
+  // Options matériel
+  isWithoutImprimante Boolean @default(false) @map("is_without_imprimante")
+  isValiseTransport   Boolean @default(false) @map("is_valise_transport")
+  isHousseProtection  Boolean @default(false) @map("is_housse_protection")
+  isMarqueBlanche     Boolean @default(false) @map("is_marque_blanche")
+  isCustomGravure     Boolean @default(false) @map("is_custom_gravure")
+  gravureNote         String? @map("gravure_note")
+  logiciel            String?
+  materielNote        String? @map("materiel_note")
+
+  // Facturation
+  facturationEntityJurid     String?  @map("facturation_entity_jurid")
+  facturationCp              String?  @map("facturation_cp")
+  facturationVille           String?  @map("facturation_ville")
+  facturationDateSignature   DateTime? @map("facturation_date_signature")
+  facturationMontantHt       Decimal? @map("facturation_montant_ht") @db.Decimal(10, 2)
+  facturationAchatType       String?  @map("facturation_achat_type")
+  facturationOtherSociete    String?  @map("facturation_other_societe")
+  facturationOtherAdresse    String?  @map("facturation_other_adresse")
+  facturationOtherCp         String?  @map("facturation_other_cp")
+  facturationOtherVille      String?  @map("facturation_other_ville")
+  facturationOtherTel        String?  @map("facturation_other_tel")
+  facturationOtherEmail      String?  @map("facturation_other_email")
+  facturationSignatureFile   String?  @map("facturation_signature_file")
+  etatFacturation            EtatFacturation @default(ATTENTE_FACTURATION) @map("etat_facturation")
+  dateFacturation            DateTime? @map("date_facturation")
+
+  // Contact création
+  isContactCreaDifferent     Boolean @default(false) @map("is_contact_crea_different")
+  contactCreaFullname        String? @map("contact_crea_fullname")
+  contactCreaLastname        String? @map("contact_crea_lastname")
+  contactCreaFonction        String? @map("contact_crea_fonction")
+  contactCreaEmail           String? @map("contact_crea_email")
+  contactCreaTelMobile       String? @map("contact_crea_tel_mobile")
+  contactCreaTelFixe         String? @map("contact_crea_tel_fixe")
+  contactCreaNote            String? @map("contact_crea_note")
+  configCreaNote             String? @map("config_crea_note")
+
+  // Livraison
+  livraisonTypeDate          LivraisonTypeDate @default(EN_ATTENTE) @map("livraison_type_date")
+  livraisonPaysId            Int?    @map("livraison_pays_id")
+  livraisonAdresse           String? @map("livraison_adresse")
+  livraisonAdresseComp       String? @map("livraison_adresse_comp")
+  livraisonVille             String? @map("livraison_ville")
+  livraisonCp                String? @map("livraison_cp")
+  livraisonContactNote       String? @map("livraison_contact_note")
+  isLivraisonDifferent       Boolean @default(false) @map("is_livraison_different")
+  isLivraisonAdresseDiff     Boolean @default(false) @map("is_livraison_adresse_diff")
+  livraisonAsSoonAsPossible  Boolean @default(false) @map("livraison_as_soon_as_possible")
+  livraisonDate              DateTime? @map("livraison_date")
+  livraisonDateFirstUsage    DateTime? @map("livraison_date_first_usage")
+  livraisonInfosSup          String? @map("livraison_infos_sup")
+
+  // Contact livraison
+  livraisonContactFullname   String? @map("livraison_contact_fullname")
+  livraisonContactLastname   String? @map("livraison_contact_lastname")
+  livraisonContactFonction   String? @map("livraison_contact_fonction")
+  livraisonContactEmail      String? @map("livraison_contact_email")
+  livraisonContactTelMobile  String? @map("livraison_contact_tel_mobile")
+  livraisonContactTelFixe    String? @map("livraison_contact_tel_fixe")
+
+  // Location / Contrat
+  isSousLocation   Boolean   @default(false) @map("is_sous_location")
+  contratDebut     DateTime? @map("contrat_debut")
+  contratFin       DateTime? @map("contrat_fin")
+  nbMois           Int?      @map("nb_mois")
+  isAbonnementBo   Boolean   @default(false) @map("is_abonnement_bo")
+
+  // Statut & expédition
+  venteStatut          VenteStatut @default(EN_ATTENTE) @map("vente_statut")
+  dateDepartAtelier    DateTime?   @map("date_depart_atelier")
+  dateReceptionClient  DateTime?   @map("date_reception_client")
+  bonDeLivraison       String?     @map("bon_de_livraison")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user           User        @relation("VenteUser", fields: [userId], references: [id])
+  modifiedUser   User?       @relation("VenteModifiedUser", fields: [modifiedUserId], references: [id])
+  client         Client?     @relation(fields: [clientId], references: [id])
+  gammeBorne     GammeBorne? @relation(fields: [gammeBorneId], references: [id])
+  modelBorne     ModelBorne? @relation(fields: [modelBorneId], references: [id])
+  couleur        Couleur?    @relation(fields: [couleurBorneId], references: [id])
+  borne          Borne?      @relation(fields: [borneId], references: [id])
+  parc           Parc?       @relation(fields: [parcId], references: [id])
+  parcDuree      ParcDuree?  @relation(fields: [parcDureeId], references: [id])
+  livraisonPays  Pays?       @relation(fields: [livraisonPaysId], references: [id])
+
+  accessoires    VenteAccessoire[]
+  consommables   VenteConsommable[]
+  documents      VenteDocument[]
+
+  @@map("ventes")
+}
+
+enum VenteStatut {
+  EN_ATTENTE
+  EN_PREPA
+  PRET_EXP
+  EXPEDIE
+  RECEPTIONNE
+}
+
+enum EtatFacturation {
+  ATTENTE_FACTURATION
+  FACTURE_ENVOYEE
+  ACCOMPTE_ATTENTE
+  ACCOMPTE_REGLE
+  REGLEMENT_OK
+}
+
+enum LivraisonTypeDate {
+  EN_ATTENTE
+  AUSSITOT
+  CLIENT
+  PRECIS
+}
+
+// ─── Tables de liaison Ventes ───────────────────────────────
+
+model VenteAccessoire {
+  id           Int  @id @default(autoincrement())
+  venteId      Int  @map("vente_id")
+  accessoireId Int  @map("accessoire_id")
+  qty          Int  @default(1)
+  note         String?
+
+  vente      Vente      @relation(fields: [venteId], references: [id], onDelete: Cascade)
+  accessoire Accessoire @relation(fields: [accessoireId], references: [id])
+
+  @@map("ventes_accessoires")
+}
+
+model VenteConsommable {
+  id                   Int @id @default(autoincrement())
+  venteId              Int @map("vente_id")
+  typeConsommableId    Int @map("type_consommable_id")
+  sousTypeConsommableId Int @map("sous_type_consommable_id")
+  qty                  Int @default(1)
+
+  vente             Vente              @relation(fields: [venteId], references: [id], onDelete: Cascade)
+  typeConsommable   TypeConsommable    @relation(fields: [typeConsommableId], references: [id])
+  sousTypeConsommable SousTypeConsommable @relation(fields: [sousTypeConsommableId], references: [id])
+
+  @@map("ventes_consommables")
+}
+
+model VenteDocument {
+  id       Int    @id @default(autoincrement())
+  venteId  Int    @map("vente_id")
+  filename String
+  type     String?
+  url      String?
+
+  vente Vente @relation(fields: [venteId], references: [id], onDelete: Cascade)
+
+  @@map("ventes_documents")
+}
