@@ -2,9 +2,12 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Forcer NODE_ENV=development pour installer les devDependencies
+ENV NODE_ENV=development
+
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci
+RUN npm ci --include=dev
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -17,6 +20,8 @@ RUN npm run build
 FROM node:22-alpine
 
 WORKDIR /app
+
+ENV NODE_ENV=production
 
 COPY package*.json ./
 COPY prisma ./prisma/
