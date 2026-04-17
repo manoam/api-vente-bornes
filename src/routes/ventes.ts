@@ -207,6 +207,45 @@ ventesRouter.post("/", async (req, res) => {
       },
     });
 
+    // Auto-création du contrat associé
+    try {
+      const contratCount = await prisma.contrat.count();
+      const contratNumero = `CTR-${String(contratCount + 1).padStart(6, "0")}`;
+
+      // Déterminer le type de contrat à partir du typeVente / parc
+      let typeContrat: "LOCATION_FINANCIERE" | "LONGUE_DUREE" | "ACHAT" | "ABONNEMENT" = "ACHAT";
+      const tv = venteData.typeVente?.toLowerCase() ?? "";
+      if (tv.includes("location") || tv.includes("loca")) {
+        typeContrat = "LOCATION_FINANCIERE";
+      } else if (tv.includes("longue")) {
+        typeContrat = "LONGUE_DUREE";
+      } else if (tv.includes("abonnement")) {
+        typeContrat = "ABONNEMENT";
+      }
+
+      await prisma.contrat.create({
+        data: {
+          numero: contratNumero,
+          typeContrat,
+          venteId: vente.id,
+          clientCrm: vente.clientNom
+            ? `${vente.clientNom} ${vente.clientPrenom ?? ""}`.trim()
+            : vente.client?.nom ?? null,
+          contactEmail: vente.clientEmail ?? null,
+          mois: venteData.nbMois ?? null,
+          dateDebut: venteData.contratDebut
+            ? new Date(venteData.contratDebut)
+            : null,
+          dateFin: venteData.contratFin
+            ? new Date(venteData.contratFin)
+            : null,
+        },
+      });
+    } catch (contratError) {
+      console.error("Auto-creation contrat failed:", contratError);
+      // On ne bloque pas la vente si le contrat échoue
+    }
+
     res.status(201).json(vente);
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -344,6 +344,7 @@ model Vente {
   accessoires    VenteAccessoire[]
   consommables   VenteConsommable[]
   documents      VenteDocument[]
+  contrat        Contrat?
 
   @@map("ventes")
 }
@@ -410,4 +411,76 @@ model VenteDocument {
   vente Vente @relation(fields: [venteId], references: [id], onDelete: Cascade)
 
   @@map("ventes_documents")
+}
+
+// ─── Contrats / Abonnements ─────────────────────────────────
+
+model Contrat {
+  id        Int      @id @default(autoincrement())
+  numero    String   @unique @default("")
+
+  // Type & classification
+  typeContrat    TypeContrat @map("type_contrat")
+  partenaire     Partenaire? @map("partenaire")
+
+  // Client
+  clientPartenaire String?  @map("client_partenaire")
+  clientCrm        String?  @map("client_crm")
+  clientId         Int?     @map("client_id")
+  contactEmail     String?  @map("contact_email")
+
+  // Borne
+  numeroBorne String? @map("numero_borne")
+
+  // Financier
+  mois       Int?
+  montant    Decimal? @db.Decimal(10, 2)
+  loyer      Decimal? @db.Decimal(10, 2)
+
+  // Dates
+  dateDebut  DateTime? @map("date_debut")
+  dateFin    DateTime? @map("date_fin")
+
+  // Abonnement logiciel (pour type ACHAT)
+  abonnementLogiciel Boolean @default(false) @map("abonnement_logiciel")
+
+  // Commercial
+  commercial String?
+
+  // Lien avec la vente source
+  venteId    Int?     @unique @map("vente_id")
+  vente      Vente?   @relation(fields: [venteId], references: [id])
+
+  // Timestamps
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  commentaires ContratCommentaire[]
+
+  @@map("contrats")
+}
+
+model ContratCommentaire {
+  id        Int      @id @default(autoincrement())
+  contratId Int      @map("contrat_id")
+  contenu   String
+  auteur    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  contrat Contrat @relation(fields: [contratId], references: [id], onDelete: Cascade)
+
+  @@map("contrat_commentaires")
+}
+
+enum TypeContrat {
+  LOCATION_FINANCIERE
+  LONGUE_DUREE
+  ACHAT
+  ABONNEMENT
+}
+
+enum Partenaire {
+  GRENKE
+  LOCAM
+  LEASECOM
 }
