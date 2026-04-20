@@ -13,6 +13,7 @@ const venteCreateSchema = z.object({
   userId: z.number(),
 
   // Client
+  crmClientId: z.number().optional(),
   clientId: z.number().optional(),
   clientNom: z.string().optional(),
   clientPrenom: z.string().optional(),
@@ -170,7 +171,53 @@ ventesRouter.get("/:id", async (req, res) => {
 ventesRouter.post("/", async (req, res) => {
   try {
     const data = venteCreateSchema.parse(req.body);
-    const { accessoires, consommables, ...venteData } = data;
+    const { accessoires, consommables, crmClientId, ...venteData } = data;
+
+    // Si un client CRM est sélectionné, on l'upsert dans notre base
+    if (crmClientId && !venteData.clientId) {
+      try {
+        const CRM_BASE_URL = process.env.CRM_BASE_URL || "http://localhost:8080";
+        const crmRes = await fetch(
+          `${CRM_BASE_URL}/fr/ajax-clients/get-client-by-id/${crmClientId}`,
+        );
+        if (crmRes.ok) {
+          const crmData = await crmRes.json();
+          if (crmData?.client) {
+            const c = crmData.client;
+            const client = await prisma.client.upsert({
+              where: { crmId: crmClientId },
+              create: {
+                crmId: crmClientId,
+                nom: c.nom ?? "",
+                prenom: c.prenom ?? null,
+                email: c.email ?? null,
+                telephone: c.telephone ?? null,
+                adresse: c.adresse ?? null,
+                ville: c.ville ?? null,
+                codePostal: c.cp ?? null,
+                pays: c.pays?.nom ?? "France",
+              },
+              update: {
+                nom: c.nom ?? "",
+                prenom: c.prenom ?? null,
+                email: c.email ?? null,
+                telephone: c.telephone ?? null,
+              },
+            });
+            venteData.clientId = client.id;
+            venteData.clientNom = client.nom;
+            venteData.clientPrenom = client.prenom ?? undefined;
+            venteData.clientEmail = client.email ?? undefined;
+            venteData.clientTelephone = client.telephone ?? undefined;
+            venteData.clientAdresse = client.adresse ?? undefined;
+            venteData.clientVille = client.ville ?? undefined;
+            venteData.clientCp = client.codePostal ?? undefined;
+          }
+        }
+      } catch (crmErr) {
+        console.error("CRM client fetch failed:", crmErr);
+      }
+    }
 
     // Générer numéro de vente
     const count = await prisma.vente.count();
