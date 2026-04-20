@@ -52,11 +52,11 @@ clientsRouter.get("/search-crm", async (req, res) => {
       return res.json([]);
     }
 
-    // Appel POST vers le CRM
-    const response = await fetch(`${CRM_BASE_URL}/fr/ajax-clients/search-client`, {
+    // Appel POST vers l'API v1 du CRM (pas d'auth requise)
+    const response = await fetch(`${CRM_BASE_URL}/api-v1/clients/search.json`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `nom=${encodeURIComponent(q)}`,
+      body: `q=${encodeURIComponent(q)}`,
     });
 
     if (!response.ok) {
@@ -84,9 +84,9 @@ clientsRouter.get("/crm/:crmId", async (req, res) => {
       return res.json(existing);
     }
 
-    // Sinon, récupérer depuis le CRM
+    // Sinon, récupérer depuis l'API v1 du CRM
     const response = await fetch(
-      `${CRM_BASE_URL}/fr/ajax-clients/get-client-by-id/${crmId}`,
+      `${CRM_BASE_URL}/api-v1/clients/get-by-id/${crmId}.json`,
     );
 
     if (!response.ok) {

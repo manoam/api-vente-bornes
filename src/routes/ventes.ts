@@ -178,7 +178,7 @@ ventesRouter.post("/", async (req, res) => {
       try {
         const CRM_BASE_URL = process.env.CRM_BASE_URL || "http://localhost:8080";
         const crmRes = await fetch(
-          `${CRM_BASE_URL}/fr/ajax-clients/get-client-by-id/${crmClientId}`,
+          `${CRM_BASE_URL}/api-v1/clients/get-by-id/${crmClientId}.json`,
         );
         if (crmRes.ok) {
           const crmData = await crmRes.json();
