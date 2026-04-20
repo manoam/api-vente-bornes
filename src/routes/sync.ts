@@ -13,6 +13,8 @@ syncRouter.post("/all", async (_req, res) => {
       modeles: await syncModeles(),
       users: await syncUsers(),
       couleurs: await syncCouleurs(),
+      typeEquipements: await syncTypeEquipements(),
+      equipements: await syncEquipements(),
     };
 
     res.json({ success: true, results });
@@ -41,6 +43,28 @@ syncRouter.post("/modeles", async (_req, res) => {
   } catch (error) {
     console.error("POST /sync/modeles error:", error);
     res.status(500).json({ error: "Erreur sync modèles" });
+  }
+});
+
+// POST /api/sync/type-equipements
+syncRouter.post("/type-equipements", async (_req, res) => {
+  try {
+    const result = await syncTypeEquipements();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("POST /sync/type-equipements error:", error);
+    res.status(500).json({ error: "Erreur sync types équipements" });
+  }
+});
+
+// POST /api/sync/equipements
+syncRouter.post("/equipements", async (_req, res) => {
+  try {
+    const result = await syncEquipements();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("POST /sync/equipements error:", error);
+    res.status(500).json({ error: "Erreur sync équipements" });
   }
 });
 
@@ -196,4 +220,93 @@ async function syncCouleurs() {
   }
 
   return { total: data.length, created, updated };
+}
+
+async function syncTypeEquipements() {
+  const response = await fetch(`${CRM_BASE_URL}/api-v1/sync/type-equipements.json`);
+  if (!response.ok) throw new Error(`CRM type-equipements: ${response.status}`);
+  const data: any[] = await response.json();
+
+  let created = 0;
+  let updated = 0;
+
+  for (const t of data) {
+    const existing = await prisma.typeEquipement.findUnique({ where: { crmId: t.id } });
+    if (existing) {
+      await prisma.typeEquipement.update({
+        where: { crmId: t.id },
+        data: {
+          nom: t.nom,
+          isStructurel: !!t.is_structurel,
+          isAccessoire: !!t.is_accessoire,
+          isProtection: !!t.is_protection,
+          isVente: !!t.is_vente,
+        },
+      });
+      updated++;
+    } else {
+      await prisma.typeEquipement.create({
+        data: {
+          crmId: t.id,
+          nom: t.nom,
+          isStructurel: !!t.is_structurel,
+          isAccessoire: !!t.is_accessoire,
+          isProtection: !!t.is_protection,
+          isVente: !!t.is_vente,
+        },
+      });
+      created++;
+    }
+
+    // Sync junction table
+    const teLocal = await prisma.typeEquipement.findUnique({ where: { crmId: t.id } });
+    if (teLocal && t.gamme_ids && Array.isArray(t.gamme_ids)) {
+      await prisma.typeEquipementGamme.deleteMany({
+        where: { typeEquipementId: teLocal.id },
+      });
+      for (const crmGammeId of t.gamme_ids) {
+        const gamme = await prisma.gammeRef.findUnique({ where: { crmId: crmGammeId } });
+        if (gamme) {
+          await prisma.typeEquipementGamme.create({
+            data: { typeEquipementId: teLocal.id, gammeRefId: gamme.id },
+          }).catch(() => {});
+        }
+      }
+    }
+  }
+
+  return { total: data.length, created, updated };
+}
+
+async function syncEquipements() {
+  const response = await fetch(`${CRM_BASE_URL}/api-v1/sync/equipements.json`);
+  if (!response.ok) throw new Error(`CRM equipements: ${response.status}`);
+  const data: any[] = await response.json();
+
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const e of data) {
+    const te = await prisma.typeEquipement.findUnique({
+      where: { crmId: e.type_equipement_id },
+    });
+    if (!te) { skipped++; continue; }
+
+    const existing = await prisma.equipement.findUnique({ where: { crmId: e.id } });
+    if (existing) {
+      await prisma.equipement.update({
+        where: { crmId: e.id },
+        data: { valeur: e.valeur, typeEquipementId: te.id },
+      });
+      updated++;
+    } else {
+      await prisma.equipement.create({
+        data: { crmId: e.id, valeur: e.valeur, typeEquipementId: te.id },
+      });
+      created++;
+    }
+  }
+
+  return { total: data.length, created, updated, skipped };
 }

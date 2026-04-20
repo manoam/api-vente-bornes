@@ -91,8 +91,9 @@ model GammeRef {
   nom       String
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  models ModelRef[]
-  ventes Vente[]
+  models              ModelRef[]
+  ventes              Vente[]
+  typeEquipementGammes TypeEquipementGamme[]
 
   @@map("gammes_ref")
 }
@@ -131,6 +132,64 @@ model Borne {
   ventes Vente[]
 
   @@map("bornes")
+}
+
+// ─── Équipements ────────────────────────────────────────────
+
+model TypeEquipement {
+  id           Int     @id @default(autoincrement())
+  crmId        Int?    @unique @map("crm_id")
+  nom          String
+  isStructurel Boolean @default(false) @map("is_structurel")
+  isAccessoire Boolean @default(false) @map("is_accessoire")
+  isProtection Boolean @default(false) @map("is_protection")
+  isVente      Boolean @default(false) @map("is_vente")
+
+  equipements          Equipement[]
+  equipementVentes     EquipementVente[]
+  typeEquipementGammes TypeEquipementGamme[]
+
+  @@map("type_equipements")
+}
+
+model Equipement {
+  id               Int    @id @default(autoincrement())
+  crmId            Int?   @unique @map("crm_id")
+  typeEquipementId Int    @map("type_equipement_id")
+  valeur           String
+
+  typeEquipement   TypeEquipement    @relation(fields: [typeEquipementId], references: [id])
+  equipementVentes EquipementVente[]
+
+  @@map("equipements")
+}
+
+model TypeEquipementGamme {
+  id               Int @id @default(autoincrement())
+  typeEquipementId Int @map("type_equipement_id")
+  gammeRefId       Int @map("gamme_ref_id")
+
+  typeEquipement TypeEquipement @relation(fields: [typeEquipementId], references: [id])
+  gamme          GammeRef       @relation(fields: [gammeRefId], references: [id])
+
+  @@unique([typeEquipementId, gammeRefId])
+  @@map("type_equipement_gammes")
+}
+
+model EquipementVente {
+  id               Int     @id @default(autoincrement())
+  venteId          Int     @map("vente_id")
+  typeEquipementId Int     @map("type_equipement_id")
+  equipementId     Int?    @map("equipement_id")
+  valeurDefinir    Boolean @default(false) @map("valeur_definir")
+  aucun            Boolean @default(false)
+  materielOccasion Boolean @default(false) @map("materiel_occasion")
+
+  vente          Vente          @relation(fields: [venteId], references: [id], onDelete: Cascade)
+  typeEquipement TypeEquipement @relation(fields: [typeEquipementId], references: [id])
+  equipement     Equipement?    @relation(fields: [equipementId], references: [id])
+
+  @@map("equipement_ventes")
 }
 
 model Accessoire {
@@ -345,10 +404,11 @@ model Vente {
   livraisonPays  Pays?       @relation(fields: [livraisonPaysId], references: [id])
   typeVenteRef   TypeVente?  @relation(fields: [typeVenteId], references: [id])
 
-  accessoires    VenteAccessoire[]
-  consommables   VenteConsommable[]
-  documents      VenteDocument[]
-  contrat        Contrat?
+  accessoires      VenteAccessoire[]
+  consommables     VenteConsommable[]
+  documents        VenteDocument[]
+  equipementVentes EquipementVente[]
+  contrat          Contrat?
 
   @@map("ventes")
 }

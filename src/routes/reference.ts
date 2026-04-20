@@ -80,6 +80,42 @@ referenceRouter.get("/types-ventes", async (_req, res) => {
   }
 });
 
+referenceRouter.get("/equipements-by-gamme/:gammeId", async (req, res) => {
+  try {
+    const gammeId = Number(req.params.gammeId);
+
+    // Get type equipements linked to this gamme (structurel + vente)
+    const links = await prisma.typeEquipementGamme.findMany({
+      where: { gammeRefId: gammeId },
+      include: {
+        typeEquipement: {
+          include: {
+            equipements: { orderBy: { valeur: "asc" } },
+          },
+        },
+      },
+    });
+
+    const result = links
+      .filter(
+        (l) => l.typeEquipement.isStructurel && l.typeEquipement.isVente
+      )
+      .map((l) => ({
+        id: l.typeEquipement.id,
+        nom: l.typeEquipement.nom,
+        equipements: l.typeEquipement.equipements.map((e) => ({
+          id: e.id,
+          valeur: e.valeur,
+        })),
+      }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("GET /reference/equipements-by-gamme error:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 referenceRouter.get("/bornes", async (_req, res) => {
   try {
     const bornes = await prisma.borne.findMany({
