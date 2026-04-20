@@ -8,6 +8,7 @@ import { referenceRouter } from "./routes/reference.js";
 import { dashboardRouter } from "./routes/dashboard.js";
 import { parametresRouter } from "./routes/parametres.js";
 import { contratsRouter } from "./routes/contrats.js";
+import { syncRouter } from "./routes/sync.js";
 import { startRabbitMQConsumer } from "./rabbitmq/consumer.js";
 
 dotenv.config();
@@ -32,6 +33,7 @@ app.use("/api/reference", referenceRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/parametres", parametresRouter);
 app.use("/api/contrats", contratsRouter);
+app.use("/api/sync", syncRouter);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
