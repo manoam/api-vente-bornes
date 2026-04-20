@@ -30,7 +30,7 @@ interface CrmMessage {
 
 const QUEUE_NAME = "ventes-bornes.ref-sync";
 const EXCHANGE = process.env.RABBITMQ_EXCHANGE ?? "konitysevents";
-const ROUTING_PATTERNS = ["crm.gamme_borne.*", "crm.model_borne.*"];
+const ROUTING_PATTERNS = ["crm.gamme_borne.*", "crm.model_borne.*", "crm.user.*"];
 
 let connection: ChannelModel | null = null;
 let channel: Channel | null = null;
@@ -107,6 +107,10 @@ async function handleMessage(msg: CrmMessage): Promise<void> {
 
   if (msg.entity_type === "model_borne") {
     return handleModelBorne(msg);
+  }
+
+  if (msg.entity_type === "user") {
+    return handleUser(msg);
   }
 
   console.log(`[RabbitMQ] Unhandled entity type: ${msg.entity_type}`);
@@ -202,6 +206,50 @@ async function handleModelBorne(msg: CrmMessage): Promise<void> {
 
     default:
       console.warn(`[RabbitMQ] Unknown event for model_borne: ${event}`);
+  }
+}
+
+async function handleUser(msg: CrmMessage): Promise<void> {
+  const { event, payload } = msg;
+  const crmId = Number(payload.id);
+  const nom = String(payload.nom ?? "");
+  const prenom = String(payload.prenom ?? "");
+  const email = String(payload.email ?? "");
+  const isActive = payload.etat === "actif";
+
+  if (!crmId) {
+    console.warn("[RabbitMQ] user message missing id");
+    return;
+  }
+
+  switch (event) {
+    case "created":
+    case "updated":
+      await prisma.user.upsert({
+        where: { crmId },
+        create: { crmId, nom, prenom, email, isActive },
+        update: { nom, prenom, email, isActive },
+      });
+      console.log(
+        `[RabbitMQ] user upserted: crmId=${crmId} ${prenom} ${nom} active=${isActive}`
+      );
+      break;
+
+    case "deleted":
+      await prisma.user
+        .update({ where: { crmId }, data: { isActive: false } })
+        .catch((err) => {
+          if (err.code === "P2025") {
+            console.log(`[RabbitMQ] user crmId=${crmId} not found, ignoring delete`);
+          } else {
+            throw err;
+          }
+        });
+      console.log(`[RabbitMQ] user deactivated: crmId=${crmId}`);
+      break;
+
+    default:
+      console.warn(`[RabbitMQ] Unknown event for user: ${event}`);
   }
 }
 

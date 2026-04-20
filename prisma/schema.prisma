@@ -11,6 +11,7 @@ datasource db {
 
 model User {
   id        Int      @id @default(autoincrement())
+  crmId     Int?     @unique @map("crm_id")
   email     String   @unique
   nom       String
   prenom    String

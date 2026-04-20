@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 
 export const usersRouter = Router();
 
-// GET /api/users - Liste des utilisateurs
+// GET /api/users - Liste des commerciaux (synchro depuis CRM via RabbitMQ)
 usersRouter.get("/", async (_req, res) => {
   try {
     const users = await prisma.user.findMany({
@@ -12,6 +12,7 @@ usersRouter.get("/", async (_req, res) => {
     });
     res.json(users);
   } catch (error) {
+    console.error("GET /users error:", error);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
