@@ -30,7 +30,7 @@ interface CrmMessage {
 
 const QUEUE_NAME = "ventes-bornes.ref-sync";
 const EXCHANGE = process.env.RABBITMQ_EXCHANGE ?? "konitysevents";
-const ROUTING_PATTERNS = ["crm.gamme_borne.*", "crm.model_borne.*", "crm.user.*"];
+const ROUTING_PATTERNS = ["crm.gamme_borne.*", "crm.model_borne.*", "crm.user.*", "crm.couleur.*"];
 
 let connection: ChannelModel | null = null;
 let channel: Channel | null = null;
@@ -111,6 +111,10 @@ async function handleMessage(msg: CrmMessage): Promise<void> {
 
   if (msg.entity_type === "user") {
     return handleUser(msg);
+  }
+
+  if (msg.entity_type === "couleur") {
+    return handleCouleur(msg);
   }
 
   console.log(`[RabbitMQ] Unhandled entity type: ${msg.entity_type}`);
@@ -250,6 +254,43 @@ async function handleUser(msg: CrmMessage): Promise<void> {
 
     default:
       console.warn(`[RabbitMQ] Unknown event for user: ${event}`);
+  }
+}
+
+async function handleCouleur(msg: CrmMessage): Promise<void> {
+  const { event, payload } = msg;
+  const crmId = Number(payload.id);
+  const nom = String(payload.couleur ?? "");
+
+  if (!crmId) {
+    console.warn("[RabbitMQ] couleur message missing id");
+    return;
+  }
+
+  switch (event) {
+    case "created":
+    case "updated":
+      await prisma.couleur.upsert({
+        where: { crmId },
+        create: { crmId, nom },
+        update: { nom },
+      });
+      console.log(`[RabbitMQ] couleur upserted: crmId=${crmId} nom=${nom}`);
+      break;
+
+    case "deleted":
+      await prisma.couleur.delete({ where: { crmId } }).catch((err) => {
+        if (err.code === "P2025") {
+          console.log(`[RabbitMQ] couleur crmId=${crmId} already deleted`);
+        } else {
+          throw err;
+        }
+      });
+      console.log(`[RabbitMQ] couleur deleted: crmId=${crmId}`);
+      break;
+
+    default:
+      console.warn(`[RabbitMQ] Unknown event for couleur: ${event}`);
   }
 }
 

@@ -111,9 +111,11 @@ model ModelRef {
 }
 
 model Couleur {
-  id  Int    @id @default(autoincrement())
-  nom String
-  hex String?
+  id        Int      @id @default(autoincrement())
+  crmId     Int?     @unique @map("crm_id")
+  nom       String
+  hex       String?
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   ventes Vente[]
 

@@ -12,6 +12,7 @@ syncRouter.post("/all", async (_req, res) => {
       gammes: await syncGammes(),
       modeles: await syncModeles(),
       users: await syncUsers(),
+      couleurs: await syncCouleurs(),
     };
 
     res.json({ success: true, results });
@@ -40,6 +41,17 @@ syncRouter.post("/modeles", async (_req, res) => {
   } catch (error) {
     console.error("POST /sync/modeles error:", error);
     res.status(500).json({ error: "Erreur sync modèles" });
+  }
+});
+
+// POST /api/sync/couleurs
+syncRouter.post("/couleurs", async (_req, res) => {
+  try {
+    const result = await syncCouleurs();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("POST /sync/couleurs error:", error);
+    res.status(500).json({ error: "Erreur sync couleurs" });
   }
 });
 
@@ -151,6 +163,33 @@ async function syncUsers() {
           email: u.email ?? `user-${u.id}@crm.local`,
           isActive: u.etat === "actif",
         },
+      });
+      created++;
+    }
+  }
+
+  return { total: data.length, created, updated };
+}
+
+async function syncCouleurs() {
+  const response = await fetch(`${CRM_BASE_URL}/api-v1/sync/couleurs.json`);
+  if (!response.ok) throw new Error(`CRM couleurs: ${response.status}`);
+  const data: any[] = await response.json();
+
+  let created = 0;
+  let updated = 0;
+
+  for (const c of data) {
+    const existing = await prisma.couleur.findUnique({ where: { crmId: c.id } });
+    if (existing) {
+      await prisma.couleur.update({
+        where: { crmId: c.id },
+        data: { nom: c.couleur },
+      });
+      updated++;
+    } else {
+      await prisma.couleur.create({
+        data: { crmId: c.id, nom: c.couleur },
       });
       created++;
     }
