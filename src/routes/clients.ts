@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 
 export const clientsRouter = Router();
 
-const CRM_BASE_URL = process.env.CRM_BASE_URL || "http://localhost:8080";
+const CRM_BASE_URL = process.env.CRM_BASE_URL || "https://crmdev.konitys.fr";
 
 // ─── GET /api/clients - Liste locale (clients ayant des ventes) ─
 
@@ -60,11 +60,12 @@ clientsRouter.get("/search-crm", async (req, res) => {
     });
 
     if (!response.ok) {
-      console.error("CRM search-client error:", response.status);
+      console.error("CRM search error:", response.status, await response.text().catch(() => ""));
       return res.json([]);
     }
 
     const results = await response.json();
+    console.log(`CRM search q="${q}" → ${results.length} results`);
     res.json(results);
   } catch (error) {
     console.error("GET /clients/search-crm error:", error);

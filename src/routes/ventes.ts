@@ -176,7 +176,7 @@ ventesRouter.post("/", async (req, res) => {
     // Si un client CRM est sélectionné, on l'upsert dans notre base
     if (crmClientId && !venteData.clientId) {
       try {
-        const CRM_BASE_URL = process.env.CRM_BASE_URL || "http://localhost:8080";
+        const CRM_BASE_URL = process.env.CRM_BASE_URL || "https://crmdev.konitys.fr";
         const crmRes = await fetch(
           `${CRM_BASE_URL}/api-v1/clients/get-by-id/${crmClientId}.json`,
         );
