@@ -16,6 +16,7 @@ const venteCreateSchema = z.object({
   // Client
   crmClientId: z.number().optional(),
   clientId: z.number().optional(),
+  clientPartenaire: z.string().optional().nullable(),
   clientNom: z.string().optional(),
   clientPrenom: z.string().optional(),
   clientEmail: z.string().email().optional(),
@@ -283,6 +284,7 @@ ventesRouter.post("/", async (req, res) => {
           typeContrat,
           partenaire,
           venteId: vente.id,
+          clientPartenaire: venteData.clientPartenaire ?? null,
           clientCrm: vente.clientNom
             ? `${vente.clientNom} ${vente.clientPrenom ?? ""}`.trim()
             : vente.client?.nom ?? null,
