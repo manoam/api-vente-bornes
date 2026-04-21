@@ -8,6 +8,7 @@ export const ventesRouter = Router();
 
 const venteCreateSchema = z.object({
   typeVente: z.string(),
+  partenaire: z.enum(["GRENKE", "LOCAM", "LEASECOM"]).optional().nullable(),
   parcId: z.number().optional(),
   parcDureeId: z.number().optional(),
   userId: z.number(),
@@ -259,21 +260,28 @@ ventesRouter.post("/", async (req, res) => {
       const contratCount = await prisma.contrat.count();
       const contratNumero = `CTR-${String(contratCount + 1).padStart(6, "0")}`;
 
-      // Déterminer le type de contrat à partir du typeVente / parc
+      // Déterminer le type de contrat à partir du typeVente
       let typeContrat: "LOCATION_FINANCIERE" | "LONGUE_DUREE" | "ACHAT" | "ABONNEMENT" = "ACHAT";
       const tv = venteData.typeVente?.toLowerCase() ?? "";
-      if (tv.includes("location") || tv.includes("loca")) {
+      if (tv.includes("financ") || tv.includes("loca_fi") || tv.includes("locafi")) {
         typeContrat = "LOCATION_FINANCIERE";
-      } else if (tv.includes("longue")) {
+      } else if (tv.includes("location") || tv.includes("longue")) {
         typeContrat = "LONGUE_DUREE";
       } else if (tv.includes("abonnement")) {
         typeContrat = "ABONNEMENT";
       }
 
+      // Partenaire (seulement pour location financière)
+      const partenaire =
+        typeContrat === "LOCATION_FINANCIERE" && venteData.partenaire
+          ? venteData.partenaire
+          : null;
+
       await prisma.contrat.create({
         data: {
           numero: contratNumero,
           typeContrat,
+          partenaire,
           venteId: vente.id,
           clientCrm: vente.clientNom
             ? `${vente.clientNom} ${vente.clientPrenom ?? ""}`.trim()
