@@ -72,6 +72,13 @@ const venteCreateSchema = z.object({
     sousTypeConsommableId: z.number(),
     qty: z.number().default(1),
   })).optional(),
+
+  equipementVentes: z.record(z.string(), z.object({
+    equipementId: z.number().optional(),
+    aucun: z.boolean().default(false),
+    valeurDefinir: z.boolean().default(false),
+    materielOccasion: z.boolean().default(false),
+  })).optional(),
 });
 
 // ─── GET /api/ventes ────────────────────────────────────────
@@ -174,7 +181,7 @@ ventesRouter.get("/:id", async (req, res) => {
 ventesRouter.post("/", async (req, res) => {
   try {
     const data = venteCreateSchema.parse(req.body);
-    const { accessoires, consommables, crmClientId, ...venteData } = data;
+    const { accessoires, consommables, equipementVentes, crmClientId, ...venteData } = data;
 
     // Si un client CRM est sélectionné, on l'upsert dans notre base
     if (crmClientId && !venteData.clientId) {
@@ -256,6 +263,23 @@ ventesRouter.post("/", async (req, res) => {
         consommables: true,
       },
     });
+
+    // Sauvegarder les équipements sélectionnés
+    if (equipementVentes && typeof equipementVentes === "object") {
+      const evData = Object.entries(equipementVentes).map(
+        ([typeEquipementId, sel]: [string, any]) => ({
+          venteId: vente.id,
+          typeEquipementId: Number(typeEquipementId),
+          equipementId: sel.equipementId ?? null,
+          aucun: sel.aucun ?? false,
+          valeurDefinir: sel.valeurDefinir ?? false,
+          materielOccasion: sel.materielOccasion ?? false,
+        })
+      );
+      if (evData.length > 0) {
+        await prisma.equipementVente.createMany({ data: evData });
+      }
+    }
 
     // Auto-création du contrat associé
     try {
@@ -368,8 +392,27 @@ ventesRouter.put("/:id", async (req, res) => {
         client: true,
         accessoires: true,
         consommables: true,
+        equipementVentes: true,
       },
     });
+
+    // Mettre à jour les équipements si fournis
+    if (body.equipementVentes && typeof body.equipementVentes === "object") {
+      await prisma.equipementVente.deleteMany({ where: { venteId: id } });
+      const evData = Object.entries(body.equipementVentes).map(
+        ([typeEquipementId, sel]: [string, any]) => ({
+          venteId: id,
+          typeEquipementId: Number(typeEquipementId),
+          equipementId: sel.equipementId ?? null,
+          aucun: sel.aucun ?? false,
+          valeurDefinir: sel.valeurDefinir ?? false,
+          materielOccasion: sel.materielOccasion ?? false,
+        })
+      );
+      if (evData.length > 0) {
+        await prisma.equipementVente.createMany({ data: evData });
+      }
+    }
 
     res.json(vente);
   } catch (error) {
