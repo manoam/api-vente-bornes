@@ -162,6 +162,7 @@ ventesRouter.get("/:id", async (req, res) => {
         consommables: { include: { typeConsommable: true, sousTypeConsommable: true } },
         equipementVentes: { include: { typeEquipement: true, equipement: true } },
         documents: true,
+        contrat: { select: { id: true, numero: true, typeContrat: true } },
       },
     });
 
