@@ -11,6 +11,7 @@ import { contratsRouter } from "./routes/contrats.js";
 import { syncRouter } from "./routes/sync.js";
 import { importRouter } from "./routes/import.js";
 import { startRabbitMQConsumer } from "./rabbitmq/consumer.js";
+import { authMiddleware } from "./middleware/auth.js";
 
 dotenv.config();
 
@@ -26,7 +27,15 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// Health check (sans auth)
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Auth middleware pour toutes les routes /api/*
+app.use("/api", authMiddleware);
+
+// Routes (protégées)
 app.use("/api/ventes", ventesRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/users", usersRouter);
@@ -36,10 +45,6 @@ app.use("/api/parametres", parametresRouter);
 app.use("/api/contrats", contratsRouter);
 app.use("/api/sync", syncRouter);
 app.use("/api/import", importRouter);
-
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
