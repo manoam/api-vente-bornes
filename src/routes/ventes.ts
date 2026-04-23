@@ -153,6 +153,7 @@ ventesRouter.get("/:id", async (req, res) => {
         livraisonPays: true,
         accessoires: { include: { accessoire: true } },
         consommables: { include: { typeConsommable: true, sousTypeConsommable: true } },
+        equipementVentes: { include: { typeEquipement: true, equipement: true } },
         documents: true,
       },
     });
