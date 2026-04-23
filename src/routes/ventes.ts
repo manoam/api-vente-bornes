@@ -318,22 +318,50 @@ ventesRouter.post("/", async (req, res) => {
 ventesRouter.put("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { accessoires, consommables, ...venteData } = req.body;
+    const body = req.body;
+
+    // Filtrer les champs valides pour Prisma
+    const allowedFields = [
+      "typeVente", "typeVenteId", "parcId", "parcDureeId", "userId", "modifiedUserId",
+      "clientId", "clientNom", "clientPrenom", "clientEmail", "clientTelephone",
+      "clientAdresse", "clientVille", "clientCp", "clientPays", "clientNameNotSellsy",
+      "isAgence", "proprietaire", "contactClientId",
+      "gammeBorneId", "modelBorneId", "couleurBorneId", "borneId", "typeEquipementId",
+      "isWithoutImprimante", "isValiseTransport", "isHousseProtection",
+      "isMarqueBlanche", "isCustomGravure", "gravureNote", "logiciel", "materielNote",
+      "facturationMontantHt", "etatFacturation",
+      "isContactCreaDifferent", "contactCreaFullname", "contactCreaLastname",
+      "contactCreaFonction", "contactCreaEmail", "contactCreaTelMobile",
+      "contactCreaTelFixe", "contactCreaNote", "configCreaNote",
+      "livraisonTypeDate", "livraisonPaysId", "livraisonAdresse", "livraisonAdresseComp",
+      "livraisonVille", "livraisonCp", "livraisonContactNote",
+      "isLivraisonDifferent", "isLivraisonAdresseDiff",
+      "livraisonContactFullname", "livraisonContactLastname", "livraisonContactFonction",
+      "livraisonContactEmail", "livraisonContactTelMobile", "livraisonContactTelFixe",
+      "livraisonDate", "livraisonDateFirstUsage", "livraisonInfosSup",
+      "isSousLocation", "contratDebut", "contratFin", "nbMois", "isAbonnementBo",
+      "venteStatut", "dateDepartAtelier", "dateReceptionClient",
+    ];
+
+    const venteData: Record<string, any> = {};
+    for (const key of allowedFields) {
+      if (key in body) {
+        venteData[key] = body[key];
+      }
+    }
+
+    // Convertir les dates
+    const dateFields = [
+      "livraisonDate", "contratDebut", "contratFin",
+      "livraisonDateFirstUsage", "dateDepartAtelier", "dateReceptionClient",
+    ];
+    for (const f of dateFields) {
+      if (venteData[f]) venteData[f] = new Date(venteData[f]);
+    }
 
     const vente = await prisma.vente.update({
       where: { id },
-      data: {
-        ...venteData,
-        livraisonDate: venteData.livraisonDate
-          ? new Date(venteData.livraisonDate)
-          : undefined,
-        contratDebut: venteData.contratDebut
-          ? new Date(venteData.contratDebut)
-          : undefined,
-        contratFin: venteData.contratFin
-          ? new Date(venteData.contratFin)
-          : undefined,
-      },
+      data: venteData,
       include: {
         user: true,
         client: true,
@@ -341,22 +369,6 @@ ventesRouter.put("/:id", async (req, res) => {
         consommables: true,
       },
     });
-
-    // Mettre à jour les accessoires si fournis
-    if (accessoires) {
-      await prisma.venteAccessoire.deleteMany({ where: { venteId: id } });
-      await prisma.venteAccessoire.createMany({
-        data: accessoires.map((a: any) => ({ ...a, venteId: id })),
-      });
-    }
-
-    // Mettre à jour les consommables si fournis
-    if (consommables) {
-      await prisma.venteConsommable.deleteMany({ where: { venteId: id } });
-      await prisma.venteConsommable.createMany({
-        data: consommables.map((c: any) => ({ ...c, venteId: id })),
-      });
-    }
 
     res.json(vente);
   } catch (error) {
