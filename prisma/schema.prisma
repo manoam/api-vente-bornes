@@ -324,6 +324,8 @@ model Vente {
   gravureNote         String? @map("gravure_note")
   logiciel            String?
   materielNote        String? @map("materiel_note")
+  isCartonBobine      Boolean @default(false) @map("is_carton_bobine")
+  materielOtherNote   String? @map("materiel_other_note")
 
   // Facturation
   facturationEntityJurid     String?  @map("facturation_entity_jurid")

@@ -366,6 +366,7 @@ ventesRouter.put("/:id", async (req, res) => {
       "livraisonContactEmail", "livraisonContactTelMobile", "livraisonContactTelFixe",
       "livraisonDate", "livraisonDateFirstUsage", "livraisonInfosSup",
       "isSousLocation", "contratDebut", "contratFin", "nbMois", "isAbonnementBo",
+      "isCartonBobine", "materielOtherNote",
       "venteStatut", "dateDepartAtelier", "dateReceptionClient",
     ];
 
