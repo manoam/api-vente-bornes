@@ -202,10 +202,11 @@ model Accessoire {
 }
 
 model TypeConsommable {
-  id  Int    @id @default(autoincrement())
-  nom String
+  id    Int    @id @default(autoincrement())
+  crmId Int?   @unique @map("crm_id")
+  nom   String
 
-  sousTypes       SousTypeConsommable[]
+  sousTypes          SousTypeConsommable[]
   ventesConsommables VenteConsommable[]
 
   @@map("types_consommables")
@@ -213,10 +214,11 @@ model TypeConsommable {
 
 model SousTypeConsommable {
   id               Int    @id @default(autoincrement())
+  crmId            Int?   @unique @map("crm_id")
   nom              String
   typeConsommableId Int   @map("type_consommable_id")
 
-  typeConsommable TypeConsommable @relation(fields: [typeConsommableId], references: [id])
+  typeConsommable    TypeConsommable @relation(fields: [typeConsommableId], references: [id])
   ventesConsommables VenteConsommable[]
 
   @@map("sous_types_consommables")

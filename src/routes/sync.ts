@@ -15,6 +15,7 @@ syncRouter.post("/all", async (_req, res) => {
       couleurs: await syncCouleurs(),
       typeEquipements: await syncTypeEquipements(),
       equipements: await syncEquipements(),
+      consommables: await syncConsommables(),
     };
 
     res.json({ success: true, results });
@@ -65,6 +66,17 @@ syncRouter.post("/equipements", async (_req, res) => {
   } catch (error) {
     console.error("POST /sync/equipements error:", error);
     res.status(500).json({ error: "Erreur sync équipements" });
+  }
+});
+
+// POST /api/sync/consommables
+syncRouter.post("/consommables", async (_req, res) => {
+  try {
+    const result = await syncConsommables();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("POST /sync/consommables error:", error);
+    res.status(500).json({ error: "Erreur sync consommables" });
   }
 });
 
@@ -309,4 +321,55 @@ async function syncEquipements() {
   }
 
   return { total: data.length, created, updated, skipped };
+}
+
+async function syncConsommables() {
+  const response = await fetch(`${CRM_BASE_URL}/api-v1/sync/consommables.json`);
+  if (!response.ok) throw new Error(`CRM consommables: ${response.status}`);
+  const data: any[] = await response.json();
+
+  let typesCreated = 0;
+  let typesUpdated = 0;
+  let sousTypesCreated = 0;
+  let sousTypesUpdated = 0;
+
+  for (const t of data) {
+    const existing = await prisma.typeConsommable.findUnique({ where: { crmId: t.id } });
+    let typeLocal;
+    if (existing) {
+      typeLocal = await prisma.typeConsommable.update({
+        where: { crmId: t.id },
+        data: { nom: t.name },
+      });
+      typesUpdated++;
+    } else {
+      typeLocal = await prisma.typeConsommable.create({
+        data: { crmId: t.id, nom: t.name },
+      });
+      typesCreated++;
+    }
+
+    for (const st of t.sous_types ?? []) {
+      const stExisting = await prisma.sousTypeConsommable.findUnique({ where: { crmId: st.id } });
+      if (stExisting) {
+        await prisma.sousTypeConsommable.update({
+          where: { crmId: st.id },
+          data: { nom: st.name, typeConsommableId: typeLocal.id },
+        });
+        sousTypesUpdated++;
+      } else {
+        await prisma.sousTypeConsommable.create({
+          data: { crmId: st.id, nom: st.name, typeConsommableId: typeLocal.id },
+        });
+        sousTypesCreated++;
+      }
+    }
+  }
+
+  return {
+    total: data.length,
+    created: typesCreated,
+    updated: typesUpdated,
+    sousTypes: { created: sousTypesCreated, updated: sousTypesUpdated },
+  };
 }
