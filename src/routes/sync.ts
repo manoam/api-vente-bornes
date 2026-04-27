@@ -7,22 +7,27 @@ const CRM_BASE_URL = process.env.CRM_BASE_URL || "https://crmdev.konitys.fr";
 
 // POST /api/sync/all — Synchronise toutes les tables depuis le CRM
 syncRouter.post("/all", async (_req, res) => {
-  try {
-    const results = {
-      gammes: await syncGammes(),
-      modeles: await syncModeles(),
-      users: await syncUsers(),
-      couleurs: await syncCouleurs(),
-      typeEquipements: await syncTypeEquipements(),
-      equipements: await syncEquipements(),
-      consommables: await syncConsommables(),
-    };
+  // Chaque sync est indépendante : si une plante, les autres continuent
+  const safeSync = async (name: string, fn: () => Promise<any>) => {
+    try {
+      return await fn();
+    } catch (err: any) {
+      console.error(`Sync ${name} failed:`, err.message);
+      return { error: err.message ?? "Erreur" };
+    }
+  };
 
-    res.json({ success: true, results });
-  } catch (error) {
-    console.error("POST /sync/all error:", error);
-    res.status(500).json({ error: "Erreur lors de la synchronisation" });
-  }
+  const results = {
+    gammes: await safeSync("gammes", syncGammes),
+    modeles: await safeSync("modeles", syncModeles),
+    users: await safeSync("users", syncUsers),
+    couleurs: await safeSync("couleurs", syncCouleurs),
+    typeEquipements: await safeSync("typeEquipements", syncTypeEquipements),
+    equipements: await safeSync("equipements", syncEquipements),
+    consommables: await safeSync("consommables", syncConsommables),
+  };
+
+  res.json({ success: true, results });
 });
 
 // POST /api/sync/gammes
