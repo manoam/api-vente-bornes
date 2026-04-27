@@ -66,7 +66,13 @@ contratsRouter.get("/", async (req, res) => {
         where,
         include: {
           commentaires: { orderBy: { createdAt: "desc" }, take: 1 },
-          vente: { select: { id: true, numero: true } },
+          vente: {
+            select: {
+              id: true,
+              numero: true,
+              client: { select: { crmId: true } },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -123,7 +129,9 @@ contratsRouter.get("/:id", async (req, res) => {
       where: { id: Number(req.params.id) },
       include: {
         commentaires: { orderBy: { createdAt: "desc" } },
-        vente: true,
+        vente: {
+          include: { client: { select: { crmId: true } } },
+        },
       },
     });
 
