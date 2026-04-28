@@ -315,6 +315,20 @@ ventesRouter.post("/", async (req, res) => {
           ? venteData.partenaire
           : null;
 
+      // Montant total = somme des TTC des devis sélectionnés
+      let montantContrat: number | null = null;
+      if (devisRefIds && devisRefIds.length > 0) {
+        const devisList = await prisma.devisRef.findMany({
+          where: { id: { in: devisRefIds } },
+          select: { totalTtc: true },
+        });
+        const sum = devisList.reduce(
+          (acc, d) => acc + (d.totalTtc ? Number(d.totalTtc) : 0),
+          0,
+        );
+        if (sum > 0) montantContrat = sum;
+      }
+
       await prisma.contrat.create({
         data: {
           numero: contratNumero,
@@ -327,6 +341,7 @@ ventesRouter.post("/", async (req, res) => {
             : vente.client?.nom ?? null,
           contactEmail: vente.clientEmail ?? null,
           mois: venteData.nbMois ?? null,
+          montant: montantContrat,
           dateDebut: venteData.contratDebut
             ? new Date(venteData.contratDebut)
             : null,
@@ -418,6 +433,24 @@ ventesRouter.put("/:id", async (req, res) => {
           skipDuplicates: true,
         });
       }
+
+      // Recalculer le montant du contrat lié = somme des TTC des devis
+      let montantContrat: number | null = null;
+      if (body.devisRefIds.length > 0) {
+        const devisList = await prisma.devisRef.findMany({
+          where: { id: { in: body.devisRefIds } },
+          select: { totalTtc: true },
+        });
+        const sum = devisList.reduce(
+          (acc, d) => acc + (d.totalTtc ? Number(d.totalTtc) : 0),
+          0,
+        );
+        if (sum > 0) montantContrat = sum;
+      }
+      await prisma.contrat.updateMany({
+        where: { venteId: id },
+        data: { montant: montantContrat },
+      });
     }
 
     // Mettre à jour les équipements si fournis
