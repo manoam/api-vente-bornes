@@ -433,8 +433,24 @@ ventesRouter.put("/:id", async (req, res) => {
           skipDuplicates: true,
         });
       }
+    }
 
-      // Recalculer le montant du contrat lié = somme des TTC (fallback HT)
+    // Synchroniser le contrat lié avec les champs de la vente
+    const contratUpdate: Record<string, any> = {};
+
+    // Durée
+    if ("nbMois" in body) {
+      contratUpdate.mois = body.nbMois ?? null;
+    }
+    // Dates
+    if ("contratDebut" in body) {
+      contratUpdate.dateDebut = body.contratDebut ? new Date(body.contratDebut) : null;
+    }
+    if ("contratFin" in body) {
+      contratUpdate.dateFin = body.contratFin ? new Date(body.contratFin) : null;
+    }
+    // Montant = somme des TTC (fallback HT) des devis sélectionnés
+    if (Array.isArray(body.devisRefIds)) {
       let montantContrat: number | null = null;
       if (body.devisRefIds.length > 0) {
         const devisList = await prisma.devisRef.findMany({
@@ -447,12 +463,16 @@ ventesRouter.put("/:id", async (req, res) => {
         }, 0);
         if (sum > 0) montantContrat = sum;
       }
+      contratUpdate.montant = montantContrat;
+    }
+
+    if (Object.keys(contratUpdate).length > 0) {
       const updateRes = await prisma.contrat.updateMany({
         where: { venteId: id },
-        data: { montant: montantContrat },
+        data: contratUpdate,
       });
       console.log(
-        `[devis→contrat] vente=${id} devisIds=${JSON.stringify(body.devisRefIds)} montant=${montantContrat} contratsUpdated=${updateRes.count}`,
+        `[vente→contrat] vente=${id} ${JSON.stringify(contratUpdate)} contratsUpdated=${updateRes.count}`,
       );
     }
 
