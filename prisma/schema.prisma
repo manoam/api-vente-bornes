@@ -54,6 +54,7 @@ model Client {
 
   contacts ClientContact[]
   ventes   Vente[]
+  devis    DevisRef[]
   groupe   GroupeClient?   @relation(fields: [groupeClientId], references: [id])
   groupeClientId Int?      @map("groupe_client_id")
 
@@ -413,6 +414,7 @@ model Vente {
   documents        VenteDocument[]
   equipementVentes EquipementVente[]
   contrat          Contrat?
+  venteDevis       VenteDevis[]
 
   @@map("ventes")
 }
@@ -467,6 +469,34 @@ model VenteConsommable {
   sousTypeConsommable SousTypeConsommable @relation(fields: [sousTypeConsommableId], references: [id])
 
   @@map("ventes_consommables")
+}
+
+model DevisRef {
+  id        Int       @id @default(autoincrement())
+  crmId     Int       @unique @map("crm_id")
+  clientId  Int       @map("client_id")
+  indent    String?
+  dateCrea  DateTime? @map("date_crea")
+  totalHt   Decimal?  @map("total_ht") @db.Decimal(10, 2)
+  totalTtc  Decimal?  @map("total_ttc") @db.Decimal(10, 2)
+  status    String?
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  client     Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  venteDevis VenteDevis[]
+
+  @@map("devis_ref")
+}
+
+model VenteDevis {
+  venteId    Int @map("vente_id")
+  devisRefId Int @map("devis_ref_id")
+
+  vente    Vente    @relation(fields: [venteId], references: [id], onDelete: Cascade)
+  devisRef DevisRef @relation(fields: [devisRefId], references: [id], onDelete: Cascade)
+
+  @@id([venteId, devisRefId])
+  @@map("vente_devis")
 }
 
 model VenteDocument {

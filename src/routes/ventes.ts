@@ -79,6 +79,8 @@ const venteCreateSchema = z.object({
     valeurDefinir: z.boolean().default(false),
     materielOccasion: z.boolean().default(false),
   })).optional(),
+
+  devisRefIds: z.array(z.number()).optional(),
 });
 
 // ─── GET /api/ventes ────────────────────────────────────────
@@ -163,6 +165,7 @@ ventesRouter.get("/:id", async (req, res) => {
         equipementVentes: { include: { typeEquipement: true, equipement: true } },
         documents: true,
         contrat: { select: { id: true, numero: true, typeContrat: true } },
+        venteDevis: { include: { devisRef: true } },
       },
     });
 
@@ -182,7 +185,7 @@ ventesRouter.get("/:id", async (req, res) => {
 ventesRouter.post("/", async (req, res) => {
   try {
     const data = venteCreateSchema.parse(req.body);
-    const { accessoires, consommables, equipementVentes, crmClientId, ...venteData } = data;
+    const { accessoires, consommables, equipementVentes, crmClientId, devisRefIds, ...venteData } = data;
 
     // Si un client CRM est sélectionné, on l'upsert dans notre base
     if (crmClientId && !venteData.clientId) {
@@ -264,6 +267,14 @@ ventesRouter.post("/", async (req, res) => {
         consommables: true,
       },
     });
+
+    // Sauvegarder les devis sélectionnés
+    if (devisRefIds && devisRefIds.length > 0) {
+      await prisma.venteDevis.createMany({
+        data: devisRefIds.map((devisRefId) => ({ venteId: vente.id, devisRefId })),
+        skipDuplicates: true,
+      });
+    }
 
     // Sauvegarder les équipements sélectionnés
     if (equipementVentes && typeof equipementVentes === "object") {
@@ -397,6 +408,17 @@ ventesRouter.put("/:id", async (req, res) => {
         equipementVentes: true,
       },
     });
+
+    // Mettre à jour les devis sélectionnés si fournis
+    if (Array.isArray(body.devisRefIds)) {
+      await prisma.venteDevis.deleteMany({ where: { venteId: id } });
+      if (body.devisRefIds.length > 0) {
+        await prisma.venteDevis.createMany({
+          data: body.devisRefIds.map((devisRefId: number) => ({ venteId: id, devisRefId })),
+          skipDuplicates: true,
+        });
+      }
+    }
 
     // Mettre à jour les équipements si fournis
     if (body.equipementVentes && typeof body.equipementVentes === "object") {

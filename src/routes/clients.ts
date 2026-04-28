@@ -135,6 +135,83 @@ clientsRouter.get("/crm/:crmId", async (req, res) => {
   }
 });
 
+// ─── GET /api/clients/crm/:crmId/devis - Liste des devis CRM (avec upsert local) ─
+
+clientsRouter.get("/crm/:crmId/devis", async (req, res) => {
+  try {
+    const crmId = Number(req.params.crmId);
+
+    // 1. S'assurer que le client local existe (sinon le créer depuis le CRM)
+    let client = await prisma.client.findUnique({ where: { crmId } });
+    if (!client) {
+      const cRes = await fetch(`${CRM_BASE_URL}/api-v1/clients/get-by-id/${crmId}.json`);
+      if (!cRes.ok) {
+        return res.status(404).json({ error: "Client non trouvé dans le CRM" });
+      }
+      const cData = await cRes.json();
+      if (!cData?.client) {
+        return res.status(404).json({ error: "Client non trouvé dans le CRM" });
+      }
+      const c = cData.client;
+      client = await prisma.client.create({
+        data: {
+          crmId,
+          nom: c.nom ?? "",
+          prenom: c.prenom ?? null,
+          email: c.email ?? null,
+          telephone: c.telephone ?? null,
+          adresse: c.adresse ?? null,
+          ville: c.ville ?? null,
+          codePostal: c.cp ?? null,
+          pays: c.pays?.nom ?? "France",
+        },
+      });
+    }
+
+    // 2. Fetch les devis du CRM
+    const dRes = await fetch(`${CRM_BASE_URL}/api-v1/devis/by-client/${crmId}.json`);
+    if (!dRes.ok) {
+      console.error("CRM devis error:", dRes.status);
+      return res.json([]);
+    }
+    const devisData: any[] = await dRes.json();
+
+    // 3. Upsert chaque devis
+    for (const d of devisData) {
+      await prisma.devisRef.upsert({
+        where: { crmId: d.id },
+        create: {
+          crmId: d.id,
+          clientId: client.id,
+          indent: d.indent ?? null,
+          dateCrea: d.date_crea ? new Date(d.date_crea) : null,
+          totalHt: d.total_ht ?? null,
+          totalTtc: d.total_ttc ?? null,
+          status: d.status ?? null,
+        },
+        update: {
+          indent: d.indent ?? null,
+          dateCrea: d.date_crea ? new Date(d.date_crea) : null,
+          totalHt: d.total_ht ?? null,
+          totalTtc: d.total_ttc ?? null,
+          status: d.status ?? null,
+        },
+      });
+    }
+
+    // 4. Retourner les devis locaux (avec id local pour les checkboxes)
+    const devis = await prisma.devisRef.findMany({
+      where: { clientId: client.id },
+      orderBy: { dateCrea: "desc" },
+    });
+
+    res.json(devis);
+  } catch (error) {
+    console.error("GET /clients/crm/:crmId/devis error:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 // ─── GET /api/clients/:id ───────────────────────────────────
 
 clientsRouter.get("/:id", async (req, res) => {
