@@ -315,17 +315,17 @@ ventesRouter.post("/", async (req, res) => {
           ? venteData.partenaire
           : null;
 
-      // Montant total = somme des TTC des devis sélectionnés
+      // Montant total = somme des TTC (fallback HT) des devis sélectionnés
       let montantContrat: number | null = null;
       if (devisRefIds && devisRefIds.length > 0) {
         const devisList = await prisma.devisRef.findMany({
           where: { id: { in: devisRefIds } },
-          select: { totalTtc: true },
+          select: { totalTtc: true, totalHt: true },
         });
-        const sum = devisList.reduce(
-          (acc, d) => acc + (d.totalTtc ? Number(d.totalTtc) : 0),
-          0,
-        );
+        const sum = devisList.reduce((acc, d) => {
+          const v = d.totalTtc ?? d.totalHt;
+          return acc + (v ? Number(v) : 0);
+        }, 0);
         if (sum > 0) montantContrat = sum;
       }
 
@@ -434,23 +434,26 @@ ventesRouter.put("/:id", async (req, res) => {
         });
       }
 
-      // Recalculer le montant du contrat lié = somme des TTC des devis
+      // Recalculer le montant du contrat lié = somme des TTC (fallback HT)
       let montantContrat: number | null = null;
       if (body.devisRefIds.length > 0) {
         const devisList = await prisma.devisRef.findMany({
           where: { id: { in: body.devisRefIds } },
-          select: { totalTtc: true },
+          select: { totalTtc: true, totalHt: true },
         });
-        const sum = devisList.reduce(
-          (acc, d) => acc + (d.totalTtc ? Number(d.totalTtc) : 0),
-          0,
-        );
+        const sum = devisList.reduce((acc, d) => {
+          const v = d.totalTtc ?? d.totalHt;
+          return acc + (v ? Number(v) : 0);
+        }, 0);
         if (sum > 0) montantContrat = sum;
       }
-      await prisma.contrat.updateMany({
+      const updateRes = await prisma.contrat.updateMany({
         where: { venteId: id },
         data: { montant: montantContrat },
       });
+      console.log(
+        `[devis→contrat] vente=${id} devisIds=${JSON.stringify(body.devisRefIds)} montant=${montantContrat} contratsUpdated=${updateRes.count}`,
+      );
     }
 
     // Mettre à jour les équipements si fournis
